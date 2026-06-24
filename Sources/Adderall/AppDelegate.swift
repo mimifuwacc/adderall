@@ -80,10 +80,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // 起動継続中=塗りつぶしの錠剤、スリープ許可=中空の錠剤。テンプレート画像でメニューバーに馴染ませる。
         let symbol = model.sleepDisabled ? "pills.fill" : "pills"
         let description = model.sleepDisabled ? "スリープ無効（起動継続中）" : "スリープ許可"
-        let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = true
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        if let image {
+            // メニューバー（高さ22pt）に収まるよう高さ基準でサイズを固定する。
+            // pointSize 指定だと pills は eye より縦に大きく、上下が切れてしまうため。
+            let targetHeight: CGFloat = 16
+            let aspect = image.size.width / max(image.size.height, 1)
+            image.size = NSSize(width: targetHeight * aspect, height: targetHeight)
+            image.isTemplate = true
+        }
         button.image = image
         // 画像が出ない環境でも必ず見えるよう記号をフォールバックに置く。
         button.title = image == nil ? (model.sleepDisabled ? "◉" : "◌") : ""
