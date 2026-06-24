@@ -1,0 +1,4 @@
+.build/
+Adderall.app/
+*.zip
+.DS_Store
