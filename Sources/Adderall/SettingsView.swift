@@ -33,6 +33,16 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            HStack {
+                Text("メニューバーのアイコンをクリックで ON/OFF を切り替えます。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Adderall を終了") { NSApp.terminate(nil) }
+            }
         }
         .padding(20)
         .frame(width: 380)

@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let model: AppModel
     private var statusItem: NSStatusItem!
     private var pollTimer: Timer?
@@ -16,8 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.target = self
-            button.action = #selector(handleClick(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.action = #selector(handleClick)
+            button.sendAction(on: [.leftMouseUp])
         }
         updateIcon()
 
@@ -32,67 +32,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.cleanup()
     }
 
-    // MARK: - クリック処理
-
-    @objc private func handleClick(_ sender: NSStatusBarButton) {
-        let event = NSApp.currentEvent
-        let isRightClick = event?.type == .rightMouseUp
-            || event?.modifierFlags.contains(.control) == true
-        if isRightClick {
-            showMenu()
-        } else {
-            toggle()
-        }
+    /// すでに常駐中のアプリをもう一度起動（.app をクリック）したら設定を開く。
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return true
     }
 
-    private func toggle() {
+    // MARK: - クリック処理（左クリックでトグル）
+
+    @objc private func handleClick() {
         if !model.toggle() {
             presentSudoError()
         }
         updateIcon()
     }
 
-    private func showMenu() {
-        let menu = NSMenu()
+    // MARK: - 設定ウィンドウ
 
-        let statusTitle = model.sleepDisabled ? "状態: スリープ無効（起動継続）" : "状態: スリープ許可"
-        let statusMenuItem = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
-        statusMenuItem.isEnabled = false
-        menu.addItem(statusMenuItem)
-
-        menu.addItem(.separator())
-
-        let toggleTitle = model.sleepDisabled ? "スリープを許可する" : "スリープを無効にする"
-        menu.addItem(NSMenuItem(title: toggleTitle, action: #selector(toggleFromMenu), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "設定…", action: #selector(openSettings), keyEquivalent: ","))
-
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Adderall を終了", action: #selector(quit), keyEquivalent: "q"))
-        menu.items.forEach { $0.target = self }
-
-        // メニューを一時的に割り当てて開く。閉じたら外して左クリックのトグルに戻す。
-        statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
-    }
-
-    @objc private func toggleFromMenu() { toggle() }
-
-    @objc private func quit() { NSApp.terminate(nil) }
-
-    @objc private func openSettings() {
+    private func openSettings() {
         if settingsWindow == nil {
             let hosting = NSHostingController(rootView: SettingsView(model: model))
             let window = NSWindow(contentViewController: hosting)
             window.title = "Adderall 設定"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            window.delegate = self
             settingsWindow = window
         }
         model.refresh()
+        // accessory のままだとウィンドウが前面に来ないため、開いている間だけ通常アプリ化する。
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.center()
         settingsWindow?.makeKeyAndOrderFront(nil)
+        settingsWindow?.orderFrontRegardless()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // 設定ウィンドウを閉じたらメニューバー常駐（Dock 非表示）に戻す。
+        NSApp.setActivationPolicy(.accessory)
     }
 
     // MARK: - 見た目
@@ -110,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 画像が出ない環境でも必ず見えるよう記号をフォールバックに置く。
         button.title = image == nil ? (model.sleepDisabled ? "◉" : "◌") : ""
         button.imagePosition = .imageOnly
-        button.toolTip = "Adderall — \(description)\n左クリック: 切替 / 右クリック: メニュー"
+        button.toolTip = "Adderall — \(description)\nクリック: 切替 / アプリを再起動: 設定"
     }
 
     private func presentSudoError() {

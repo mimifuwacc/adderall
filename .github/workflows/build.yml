@@ -1,9 +1,9 @@
 name: build
 
+# CI: make sure the app builds on every push / PR.
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   pull_request:
 
 jobs:
@@ -26,9 +26,3 @@ jobs:
         with:
           name: Adderall-app
           path: Adderall.zip
-
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: Adderall.zip

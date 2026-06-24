@@ -1,0 +1,46 @@
+name: Release
+
+# Build the app and attach a DMG whenever a GitHub Release is published.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build (Release)
+        run: ./scripts/build-app.sh
+
+      - name: Package DMG
+        run: |
+          set -euo pipefail
+          APP="Adderall.app"
+          DMG="Adderall-${GITHUB_REF_NAME}.dmg"
+
+          # Stage the .app next to an /Applications symlink for drag-to-install.
+          STAGE="$(mktemp -d)"
+          cp -R "$APP" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+
+          hdiutil create \
+            -volname "Adderall" \
+            -srcfolder "$STAGE" \
+            -ov -format UDZO \
+            "$DMG"
+
+          echo "DMG=$DMG" >> "$GITHUB_ENV"
+
+      - name: Upload DMG to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" "${DMG}" --clobber
