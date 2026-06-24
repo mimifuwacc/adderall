@@ -77,8 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func updateIcon() {
         guard let button = statusItem.button else { return }
-        // 起動継続中=目を開く、スリープ許可=目を閉じる。テンプレート画像でメニューバーに馴染ませる。
-        let symbol = model.sleepDisabled ? "eye.fill" : "eye.slash"
+        // 起動継続中=塗りつぶしの錠剤、スリープ許可=中空の錠剤。テンプレート画像でメニューバーに馴染ませる。
+        let symbol = model.sleepDisabled ? "pills.fill" : "pills"
         let description = model.sleepDisabled ? "スリープ無効（起動継続中）" : "スリープ許可"
         let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
         let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)?

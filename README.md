@@ -1,81 +1,81 @@
 # Adderall
 
-`sudo pmset -a disablesleep` をメニューバーからワンクリックで切り替えるだけの macOS アプリ。
+A tiny macOS menu bar app that toggles `sudo pmset -a disablesleep` with one click.
 
-- **アイコンをクリック**: スリープ無効 ⇄ 許可 をトグル
-- **`.app` をもう一度起動**: 設定ウィンドウを開く（常駐中に再度開く操作で reopen）
-- アイコンで状態が分かる（👁 開いた目 = 起動継続中 / 👁̸ 閉じた目 = スリープ許可）
-- 普段は Dock に出ず、メニューバーだけに常駐（設定を開いている間だけ Dock に表示）
+- **Click the icon**: toggle sleep disabled ⇄ allowed
+- **Launch the `.app` again**: open the settings window (handled via app reopen)
+- The icon reflects the state (💊 filled pill = staying awake / 💊 hollow pill = sleep allowed)
+- Lives only in the menu bar; no Dock icon (it appears in the Dock only while settings are open)
 
-## 設定画面
+## Settings
 
-メニューバーに常駐した状態で `.app` をもう一度起動すると設定ウィンドウが開きます:
+While Adderall is running in the menu bar, launching the `.app` again opens the settings window:
 
-- **ログイン時に起動** — `SMAppService` でログイン項目に登録/解除
-- **ディスプレイのスリープも防ぐ** — 有効中は `caffeinate -d` でディスプレイも起こし続ける（root 不要・可逆）
-- **パスワードなし実行の状態** — ✓/✗ で表示。未設定なら「設定する」ボタンから管理者ダイアログ1回で登録
-- **Adderall を終了** — 終了ボタン（メニューが無いのでここから終了）
+- **Launch at login** — register/unregister a login item via `SMAppService`
+- **Also prevent display sleep** — while active, keeps the display awake with `caffeinate -d` (no root, fully reversible)
+- **Passwordless execution status** — shown as ✓/✗; if not set up, the "Set up" button installs it via a single admin prompt
+- **Quit Adderall** — quit button (there is no menu, so quit from here)
 
-## セットアップ
+## Setup
 
-### 1. パスワードなし実行を許可（初回のみ）
+### 1. Allow passwordless execution (first run only)
 
-`disablesleep` は root 権限が必要なため、対象コマンドだけを sudoers でパスワード不要にします。
-アプリの「設定…」→「設定する」か、ターミナルで:
+`disablesleep` requires root, so only that specific command is made password-free via sudoers.
+Use the settings window's "Set up" button, or run it in a terminal:
 
 ```sh
 ./scripts/install-sudoers.sh
 ```
 
-`/etc/sudoers.d/adderall-disablesleep` に以下だけを登録します（pmset の他の操作は許可しません）:
+This installs `/etc/sudoers.d/adderall-disablesleep` with only these lines (no other pmset operations are allowed):
 
 ```
 <user> ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0
 <user> ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 1
 ```
 
-解除したいときは `sudo rm /etc/sudoers.d/adderall-disablesleep`。
+To remove it: `sudo rm /etc/sudoers.d/adderall-disablesleep`.
 
-### 2. ビルドして起動
+### 2. Build and run
 
 ```sh
 ./scripts/build-app.sh
 open Adderall.app
 ```
 
-> 実行ファイルを直接叩くとメニューバーに出ないことがあるため、必ず `open` で起動してください。
+> Launch with `open`, not by running the executable directly — a directly launched binary may not register in the menu bar.
 
-## リリース / ダウンロード版
+## Releases / downloads
 
-GitHub で **Release を publish すると** `.github/workflows/release.yml` が動き、`Adderall.app` を
-ビルドして `/Applications` シンボリックリンク同梱の DMG（`Adderall-<tag>.dmg`）を Release に添付します。
-DMG を開いて Adderall を Applications にドラッグするだけでインストールできます。
+Publishing a GitHub Release triggers `.github/workflows/release.yml`, which builds `Adderall.app`
+and attaches a DMG (`Adderall-<tag>.dmg`) containing an `/Applications` symlink for drag-to-install.
+Open the DMG and drag Adderall into Applications.
 
-リリース手順の例:
+Example release flow:
 
 ```sh
 gh release create v0.1.0 --generate-notes
-# publish 後、Actions が DMG をビルドして Release に添付します
+# after publishing, Actions builds the DMG and attaches it to the release
 ```
 
-> push / PR では `build.yml` がビルド検証だけ行い、`Adderall.zip` を Actions のアーティファクトに残します。
+> On push / PR, `build.yml` only verifies the build and uploads `Adderall.zip` as a workflow artifact.
 
-配布物は **ad-hoc 署名**（公証なし）のため、初回起動時に Gatekeeper の警告が出ます。回避方法:
+Builds are **ad-hoc signed** (not notarized), so Gatekeeper warns on first launch. To bypass:
 
-- Finder で `Adderall.app` を右クリック →「開く」、または
+- In Finder, right-click `Adderall.app` → "Open", or
 - `xattr -dr com.apple.quarantine /Applications/Adderall.app`
 
-## 仕組み
+## How it works
 
-- 状態取得は `pmset -g` の `SleepDisabled` 行を読む（root 不要）
-- 切り替えは `sudo -n /usr/bin/pmset -a disablesleep {0,1}`（無パスワード前提、未設定なら案内ダイアログ）
-- 許可の有無は `sudo -n -l ...` で実行せずに判定
-- ディスプレイは `caffeinate -d` を起動/終了して制御
-- 5 秒ごとに状態を再取得し、ターミナル等での変更にも追従
+- State is read from the `SleepDisabled` line of `pmset -g` (no root)
+- Toggling runs `sudo -n /usr/bin/pmset -a disablesleep {0,1}` (assumes passwordless setup; shows a prompt if missing)
+- Passwordless availability is detected with `sudo -k -n …`, which ignores any cached sudo timestamp so it reflects only the sudoers rule
+- Display sleep is controlled by starting/stopping a `caffeinate -d` process
+- State is re-read every 5 seconds, so changes made elsewhere (e.g. a terminal) are picked up
 
-## 開発
+## Development
 
 ```sh
-swift build          # デバッグビルド
+swift build          # debug build
 ./scripts/build-app.sh && open Adderall.app
 ```
