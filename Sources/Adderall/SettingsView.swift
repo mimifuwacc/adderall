@@ -2,6 +2,22 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: Updater
+
+    private var updateStatusText: String {
+        switch updater.status {
+        case .idle: return "バージョン \(updater.currentVersion)"
+        case .checking: return "確認中…"
+        case .upToDate: return "最新です（\(updater.currentVersion)）"
+        case .available(let v): return "新しいバージョン \(v) があります"
+        case .downloading: return "ダウンロード中…"
+        case .failed: return "バージョン \(updater.currentVersion)"
+        }
+    }
+
+    private var isBusy: Bool {
+        updater.status == .checking || updater.status == .downloading
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -35,6 +51,16 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Divider()
+
+            HStack(spacing: 8) {
+                Text(updateStatusText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if isBusy { ProgressView().controlSize(.small) }
+                Spacer()
+                Button("アップデートを確認") { updater.check(silent: false) }
+                    .disabled(isBusy)
+            }
 
             HStack {
                 Text("メニューバーのアイコンをクリックで ON/OFF を切り替えます。")

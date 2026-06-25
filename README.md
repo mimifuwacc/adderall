@@ -65,6 +65,21 @@ Builds are **ad-hoc signed** (not notarized), so Gatekeeper warns on first launc
 - In Finder, right-click `Adderall.app` → "Open", or
 - `xattr -dr com.apple.quarantine /Applications/Adderall.app`
 
+## Auto-update
+
+Adderall checks GitHub Releases for a newer version on launch, and you can check
+manually from the settings window ("Check for updates"). When a newer version exists,
+it offers to download the release DMG, replace the running app in place, and relaunch.
+
+Because the updater strips the quarantine attribute when it swaps the app, the Gatekeeper
+warning above only appears on the **first** manual install — subsequent auto-updates open
+without a warning. (Updates are fetched over HTTPS from GitHub; there is no Developer ID /
+EdDSA signature check beyond TLS.)
+
+> The build's version comes from the git tag (`APP_VERSION` / `git describe`), so the
+> in-app version matches the release tag. The first build that contains this updater must
+> be installed manually; updates are automatic from there on.
+
 ## How it works
 
 - State is read from the `SleepDisabled` line of `pmset -g` (no root)

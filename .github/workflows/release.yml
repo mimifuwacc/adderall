@@ -19,6 +19,8 @@ jobs:
         run: swift --version
 
       - name: Build (Release)
+        env:
+          APP_VERSION: ${{ github.ref_name }}
         run: ./scripts/build-app.sh
 
       - name: Package DMG
