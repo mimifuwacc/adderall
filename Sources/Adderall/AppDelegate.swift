@@ -3,6 +3,7 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let model: AppModel
+    private var updater: Updater!
     private var statusItem: NSStatusItem!
     private var pollTimer: Timer?
     private var settingsWindow: NSWindow?
@@ -26,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.model.refreshLive()
             self?.updateIcon()
         }
+
+        // 起動時に自動でアップデート確認（最新なら静かに何もしない）。
+        updater = Updater()
+        updater.check(silent: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -51,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func openSettings() {
         if settingsWindow == nil {
-            let hosting = NSHostingController(rootView: SettingsView(model: model))
+            let hosting = NSHostingController(rootView: SettingsView(model: model, updater: updater))
             let window = NSWindow(contentViewController: hosting)
             window.title = "Adderall 設定"
             window.styleMask = [.titled, .closable]
